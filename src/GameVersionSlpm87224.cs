@@ -44,4 +44,16 @@ public class GameVersionSlpm87224(IMemoryApi memory) : GameVersion(memory) {
     protected override uint RoomNumberAddress => 0x0D3218;
 
     protected override uint StageNumberAddress => 0x0D3216;
+
+    protected override uint PlayerXAddress => 0x0CDE98;
+    
+    protected override uint PlayerYAddress => 0x0CDE9C;
+    
+    protected override uint PlayerZAddress => 0x0CDEA0;
+
+    protected override uint PlayerHealthAddress => 0x0CDF30;
+
+    protected override uint EnemyListAddress => 0x0CE03C;
+
+    protected override uint EnemyListEndAddress => 0x0CE0DC;
 }

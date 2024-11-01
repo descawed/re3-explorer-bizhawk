@@ -23,6 +23,7 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
     }
     
     private const ushort InitialRngState = 0x6CA4;
+    private const int NumCharacters = 15;
 
     public ApiContainer? MaybeApi { get; set; }
 
@@ -42,16 +43,23 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
 
     private readonly Font _font = new(FontFamily.GenericSansSerif, 13);
     private readonly Label _roomLabel;
-    private readonly Label _rngValueLabel;
+    private readonly Label _rngValueHexLabel;
+    private readonly Label _rngValueDecLabel;
     private readonly Label _rngFrameCallsLabel;
     private readonly Label _rngRoomCallsLabel;
     private readonly Label _rngTotalCallsLabel;
-    private readonly Label _scriptRngValueLabel;
+    private readonly Label _scriptRngValueHexLabel;
+    private readonly Label _scriptRngValueDecLabel;
     private readonly Label _scriptFrameCallsLabel;
     private readonly Label _scriptRoomCallsLabel;
     private readonly Label _scriptTotalCallsLabel;
-    private readonly Label _scriptRngOffsetIndexLabel;
-    private readonly Label _scriptRngOffsetLabel;
+    private readonly Label _scriptRngOffsetIndexHexLabel;
+    private readonly Label _scriptRngOffsetIndexDecLabel;
+    private readonly Label _scriptRngOffsetHexLabel;
+    private readonly Label _scriptRngOffsetDecLabel;
+
+    private readonly TableLayoutPanel _characterTable;
+    private readonly List<Label[]> _characterLabels = [];
     
     private readonly CallTablePanel _callTablePanel;
 
@@ -60,7 +68,7 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
     public Re3Explorer() {
         Shown += OnShow;
         
-        ClientSize = new Size(800, 320);
+        ClientSize = new Size(1200, 600);
         SuspendLayout();
         BackColor = Color.FromArgb(0xEC, 0xE9, 0xD8);
 
@@ -69,80 +77,133 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
             Dock = DockStyle.Fill,
         };
         
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-        _roomLabel = new Label { AutoSize = true, Font = _font, Text = "Room: N/A" };
+        _roomLabel = NewLabel("Room: N/A");
         
-        var rngTable = new TableLayoutPanel {
+        var watchTable = new TableLayoutPanel {
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowOnly,
             CellBorderStyle = TableLayoutPanelCellBorderStyle.Single,
         };
         
         // header
-        rngTable.Controls.Add(new Label { AutoSize = true, Font = _font, Text = "Value" }, 1, 0);
-        rngTable.Controls.Add(new Label { AutoSize = true, Font = _font, Text = "Frame" }, 2, 0);
-        rngTable.Controls.Add(new Label { AutoSize = true, Font = _font, Text = "Room" }, 3, 0);
-        rngTable.Controls.Add(new Label { AutoSize = true, Font = _font, Text = "Total" }, 4, 0);
+        watchTable.Controls.Add(NewLabel("Hex"), 1, 0);
+        watchTable.Controls.Add(NewLabel("Dec"), 2, 0);
+        watchTable.Controls.Add(NewLabel("Frame"), 3, 0);
+        watchTable.Controls.Add(NewLabel("Room"), 4, 0);
+        watchTable.Controls.Add(NewLabel("Total"), 5, 0);
         
         // RNG
-        rngTable.Controls.Add(new Label { Anchor = AnchorStyles.Right, AutoSize = true, Font = _font, Text = "RNG" }, 0, 1);
-        _rngValueLabel = new Label { AutoSize = true, Font = _font, Text = "" };
-        rngTable.Controls.Add(_rngValueLabel, 1, 1);
-        _rngFrameCallsLabel = new Label { AutoSize = true, Font = _font, Text = "" };
-        rngTable.Controls.Add(_rngFrameCallsLabel, 2, 1);
-        _rngRoomCallsLabel = new Label { AutoSize = true, Font = _font, Text = "" };
-        rngTable.Controls.Add(_rngRoomCallsLabel, 3, 1);
-        _rngTotalCallsLabel = new Label { AutoSize = true, Font = _font, Text = "" };
-        rngTable.Controls.Add(_rngTotalCallsLabel, 4, 1);
+        watchTable.Controls.Add(NewLabel("RNG", AnchorStyles.Right), 0, 1);
+        _rngValueHexLabel = NewLabel();
+        watchTable.Controls.Add(_rngValueHexLabel, 1, 1);
+        _rngValueDecLabel = NewLabel();
+        watchTable.Controls.Add(_rngValueDecLabel, 2, 1);
+        _rngFrameCallsLabel = NewLabel();
+        watchTable.Controls.Add(_rngFrameCallsLabel, 3, 1);
+        _rngRoomCallsLabel = NewLabel();
+        watchTable.Controls.Add(_rngRoomCallsLabel, 4, 1);
+        _rngTotalCallsLabel = NewLabel();
+        watchTable.Controls.Add(_rngTotalCallsLabel, 5, 1);
         
         // script RNG
-        rngTable.Controls.Add(new Label { Anchor = AnchorStyles.Right, AutoSize = true, Font = _font, Text = "Script RNG" }, 0, 2);
-        _scriptRngValueLabel = new Label { AutoSize = true, Font = _font, Text = "" };
-        rngTable.Controls.Add(_scriptRngValueLabel, 1, 2);
-        _scriptFrameCallsLabel = new Label { AutoSize = true, Font = _font, Text = "" };
-        rngTable.Controls.Add(_scriptFrameCallsLabel, 2, 2);
-        _scriptRoomCallsLabel = new Label { AutoSize = true, Font = _font, Text = "" };
-        rngTable.Controls.Add(_scriptRoomCallsLabel, 3, 2);
-        _scriptTotalCallsLabel = new Label { AutoSize = true, Font = _font, Text = "" };
-        rngTable.Controls.Add(_scriptTotalCallsLabel, 4, 2);
+        watchTable.Controls.Add(NewLabel("Script RNG", AnchorStyles.Right), 0, 2);
+        _scriptRngValueHexLabel = NewLabel();
+        watchTable.Controls.Add(_scriptRngValueHexLabel, 1, 2);
+        _scriptRngValueDecLabel = NewLabel();
+        watchTable.Controls.Add(_scriptRngValueDecLabel, 2, 2);
+        _scriptFrameCallsLabel = NewLabel();
+        watchTable.Controls.Add(_scriptFrameCallsLabel, 3, 2);
+        _scriptRoomCallsLabel = NewLabel();
+        watchTable.Controls.Add(_scriptRoomCallsLabel, 4, 2);
+        _scriptTotalCallsLabel = NewLabel();
+        watchTable.Controls.Add(_scriptTotalCallsLabel, 5, 2);
         
-        rngTable.Controls.Add(new Label { Anchor = AnchorStyles.Right, AutoSize = true, Font = _font, Text = "Script RNG offset index" }, 0, 3);
-        _scriptRngOffsetIndexLabel = new Label { AutoSize = true, Font = _font, Text = "" };
-        rngTable.Controls.Add(_scriptRngOffsetIndexLabel, 1, 3);
-        rngTable.Controls.Add(new Label { AutoSize = true, Font = _font, Text = "N/A" }, 2, 3);
-        rngTable.Controls.Add(new Label { AutoSize = true, Font = _font, Text = "N/A" }, 3, 3);
-        rngTable.Controls.Add(new Label { AutoSize = true, Font = _font, Text = "N/A" }, 4, 3);
+        watchTable.Controls.Add(NewLabel("Script RNG offset index", AnchorStyles.Right), 0, 3);
+        _scriptRngOffsetIndexHexLabel = NewLabel();
+        watchTable.Controls.Add(_scriptRngOffsetIndexHexLabel, 1, 3);
+        _scriptRngOffsetIndexDecLabel = NewLabel();
+        watchTable.Controls.Add(_scriptRngOffsetIndexDecLabel, 2, 3);
         
-        rngTable.Controls.Add(new Label { Anchor = AnchorStyles.Right, AutoSize = true, Font = _font, Text = "Script RNG offset" }, 0, 4);
-        _scriptRngOffsetLabel = new Label { AutoSize = true, Font = _font, Text = "" };
-        rngTable.Controls.Add(_scriptRngOffsetLabel, 1, 4);
-        rngTable.Controls.Add(new Label { AutoSize = true, Font = _font, Text = "N/A" }, 2, 4);
-        rngTable.Controls.Add(new Label { AutoSize = true, Font = _font, Text = "N/A" }, 3, 4);
-        rngTable.Controls.Add(new Label { AutoSize = true, Font = _font, Text = "N/A" }, 4, 4);
+        watchTable.Controls.Add(NewLabel("Script RNG offset", AnchorStyles.Right), 0, 4);
+        _scriptRngOffsetHexLabel = NewLabel();
+        watchTable.Controls.Add(_scriptRngOffsetHexLabel, 1, 4);
+        _scriptRngOffsetDecLabel = NewLabel();
+        watchTable.Controls.Add(_scriptRngOffsetDecLabel, 2, 4);
+
+        _characterTable = new TableLayoutPanel {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowOnly,
+            CellBorderStyle = TableLayoutPanelCellBorderStyle.Single,
+        };
+
+        _characterTable.Controls.Add(NewLabel("X"), 1, 0);
+        _characterTable.Controls.Add(NewLabel("Y"), 2, 0);
+        _characterTable.Controls.Add(NewLabel("Z"), 3, 0);
+        _characterTable.Controls.Add(NewLabel("Health"), 4, 0);
+
+        for (var i = 0; i < NumCharacters; i++) {
+            AddCharacterRow(i);
+        }
 
         _callTablePanel = new CallTablePanel(_callHistory) {
-            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right | AnchorStyles.Left,
             BackColor = Color.WhiteSmoke,
             Font = _font,
         };
         
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.Controls.Add(_roomLabel, 0, 0);
+        root.Controls.Add(_roomLabel);
         
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.Controls.Add(rngTable);
+        root.Controls.Add(watchTable);
         
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.Controls.Add(new Label { AutoSize = true, Font = _font, Text = "Calls:" });
-
+        root.Controls.Add(NewLabel("Characters"));
+        
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        root.Controls.Add(_callTablePanel);
+        root.Controls.Add(_characterTable);
+        
+        root.Controls.Add(NewLabel("Calls:"), 1, 0);
+        root.Controls.Add(_callTablePanel, 1, 1);
+        root.SetRowSpan(_callTablePanel, 3);
         
         Controls.Add(root);
         
         ResumeLayout(false);
         PerformLayout();
+    }
+    
+    private Label NewLabel(string text = "", AnchorStyles anchor = AnchorStyles.Left) => new() { Anchor = anchor, AutoSize = true, Font = _font, Text = text };
+
+    private void AddCharacterRow(int i) {
+        Label[] labels =
+            [NewLabel(i == 0 ? "Player" : $"Enemy {i}"), NewLabel(), NewLabel(), NewLabel(), NewLabel()];
+        for (var j = 0; j < labels.Length; j++) {
+            _characterTable.Controls.Add(labels[j], j, i + 1);
+        }
+        _characterLabels.Add(labels);
+    }
+
+    private void SetCharacterStats(int i, GameVersion.Character? character = null) {
+        while (i >= _characterLabels.Count) {
+            AddCharacterRow(i);
+        }
+        
+        var labels = _characterLabels[i];
+        if (character is null) {
+            labels[1].Text = "";
+            labels[2].Text = "";
+            labels[3].Text = "";
+            labels[4].Text = "";
+        } else {
+            labels[1].Text = $"{character.X}";
+            labels[2].Text = $"{character.Y}";
+            labels[3].Text = $"{character.Z}";
+            labels[4].Text = $"{character.Health}";
+        }
     }
 
     private void OnShow(object sender, EventArgs e) {
@@ -210,13 +271,17 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
         }
         
         _roomLabel.Text = $"Room: {currentRoom}";
-        _rngValueLabel.Text = $"{_version.RngState:X04}";
-        _scriptRngValueLabel.Text = $"{_version.ScriptRngState:X04}";
+        _rngValueHexLabel.Text = $"{_version.RngState:X04}";
+        _rngValueDecLabel.Text = $"{_version.RngState}";
+        _scriptRngValueHexLabel.Text = $"{_version.ScriptRngState:X04}";
+        _scriptRngValueDecLabel.Text = $"{_version.ScriptRngState}";
         
         var scriptRngOffsetIndex = _version.ScriptRngOffsetIndex;
         var scriptRngOffset = _version.ScriptRngOffset;
-        _scriptRngOffsetIndexLabel.Text = $"{scriptRngOffsetIndex} ({scriptRngOffsetIndex:X02})";
-        _scriptRngOffsetLabel.Text = $"{scriptRngOffset} ({scriptRngOffset:X02})";
+        _scriptRngOffsetIndexHexLabel.Text = $"{scriptRngOffsetIndex:X02}";
+        _scriptRngOffsetIndexDecLabel.Text = $"{scriptRngOffsetIndex}";
+        _scriptRngOffsetHexLabel.Text = $"{scriptRngOffset:X02}";
+        _scriptRngOffsetDecLabel.Text = $"{scriptRngOffset}";
 
         // because gameplay runs at 30fps, don't show a 0 value unless it happens two frames in a row
         if (_randCalls.FrameCalls == 0 && !_framerateToggle) {
@@ -232,6 +297,12 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
         
         _scriptRoomCallsLabel.Text = $"{_scriptCalls.RoomCalls}";
         _scriptTotalCallsLabel.Text = $"{_scriptCalls.TotalCalls}";
+
+        SetCharacterStats(0, _version.Player);
+        var enemies = _version.Enemies;
+        for (var i = 1; i < NumCharacters; i++) {
+            SetCharacterStats(i, i < enemies.Count ? enemies[i] : null);
+        }
         
         ResumeLayout();
     }
