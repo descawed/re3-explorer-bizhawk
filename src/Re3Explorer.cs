@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 
 using BizHawk.Client.Common;
@@ -38,8 +39,6 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
     private bool _trackingPatchesApplied;
     private string _lastRoom = "";
     private bool _framerateToggle;
-    private int _numCallRows = 20;
-    private int _numCallColumns = 2;
 
     private readonly Font _font = new(FontFamily.GenericSansSerif, 13);
     private readonly Label _roomLabel;
@@ -48,24 +47,29 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
     private readonly Label _rngRoomCallsLabel;
     private readonly Label _rngTotalCallsLabel;
     private readonly Label _scriptRngValueLabel;
+    private readonly Label _scriptFrameCallsLabel;
+    private readonly Label _scriptRoomCallsLabel;
+    private readonly Label _scriptTotalCallsLabel;
     private readonly Label _scriptRngOffsetIndexLabel;
     private readonly Label _scriptRngOffsetLabel;
-    private readonly TableLayoutPanel _callsTable;
-    private readonly List<List<Label>> _callLabels = [];
+    
+    private readonly CallTablePanel _callTablePanel;
 
     protected override string WindowTitleStatic => "RE3 Explorer";
 
     public Re3Explorer() {
         Shown += OnShow;
         
-        ClientSize = new Size(480, 320);
+        ClientSize = new Size(800, 320);
         SuspendLayout();
         BackColor = Color.FromArgb(0xEC, 0xE9, 0xD8);
 
-        var root = new FlowLayoutPanel {
+        var root = new TableLayoutPanel {
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
             Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.TopDown,
         };
+        
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         _roomLabel = new Label { AutoSize = true, Font = _font, Text = "Room: N/A" };
         
@@ -96,6 +100,12 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
         rngTable.Controls.Add(new Label { Anchor = AnchorStyles.Right, AutoSize = true, Font = _font, Text = "Script RNG" }, 0, 2);
         _scriptRngValueLabel = new Label { AutoSize = true, Font = _font, Text = "" };
         rngTable.Controls.Add(_scriptRngValueLabel, 1, 2);
+        _scriptFrameCallsLabel = new Label { AutoSize = true, Font = _font, Text = "" };
+        rngTable.Controls.Add(_scriptFrameCallsLabel, 2, 2);
+        _scriptRoomCallsLabel = new Label { AutoSize = true, Font = _font, Text = "" };
+        rngTable.Controls.Add(_scriptRoomCallsLabel, 3, 2);
+        _scriptTotalCallsLabel = new Label { AutoSize = true, Font = _font, Text = "" };
+        rngTable.Controls.Add(_scriptTotalCallsLabel, 4, 2);
         
         rngTable.Controls.Add(new Label { Anchor = AnchorStyles.Right, AutoSize = true, Font = _font, Text = "Script RNG offset index" }, 0, 3);
         _scriptRngOffsetIndexLabel = new Label { AutoSize = true, Font = _font, Text = "" };
@@ -111,36 +121,23 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
         rngTable.Controls.Add(new Label { AutoSize = true, Font = _font, Text = "N/A" }, 3, 4);
         rngTable.Controls.Add(new Label { AutoSize = true, Font = _font, Text = "N/A" }, 4, 4);
 
-        _callsTable = new TableLayoutPanel {
-            Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowOnly,
+        _callTablePanel = new CallTablePanel(_callHistory) {
+            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
             BackColor = Color.WhiteSmoke,
-            CellBorderStyle = TableLayoutPanelCellBorderStyle.Single,
+            Font = _font,
         };
         
-        _callsTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80));
-        for (var i = 1; i < _numCallColumns; i++) {
-            _callsTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
-        }
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.Controls.Add(_roomLabel, 0, 0);
         
-        // generate and insert labels
-        for (var row = 0; row < _numCallRows; row++) {
-            _callsTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
-            var labelList = new List<Label>();
-            for (var column = 0; column < _numCallColumns; column++) {
-                var callLabel = new Label { AutoSize = true, Font = _font, Text = "" };
-                _callsTable.Controls.Add(callLabel, column, row);
-                labelList.Add(callLabel);
-            }
-            
-            _callLabels.Add(labelList);
-        }
-        
-        root.Controls.Add(_roomLabel);
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.Controls.Add(rngTable);
+        
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.Controls.Add(new Label { AutoSize = true, Font = _font, Text = "Calls:" });
-        root.Controls.Add(_callsTable);
+
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.Controls.Add(_callTablePanel);
         
         Controls.Add(root);
         
@@ -165,8 +162,15 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
         _randCalls.FrameCalls = numRandCalls;
         _randCalls.RoomCalls += numRandCalls;
         _randCalls.TotalCalls += numRandCalls;
-        
-        _callHistory.Add((Api.Emulation.FrameCount(), randCalls));
+
+        var numScriptCalls = (uint)randCalls.Count(call => (call & 0x3FFFFF) == _version.ScriptRandAddress);
+        _scriptCalls.FrameCalls = numScriptCalls;
+        _scriptCalls.RoomCalls += numScriptCalls;
+        _scriptCalls.TotalCalls += numScriptCalls;
+
+        if (numRandCalls > 0) {
+            _callTablePanel.Add(Api.Emulation.FrameCount(), randCalls);
+        }
     }
 
     public override void Restart() {
@@ -195,6 +199,8 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
             _randCalls.RoomCalls = 0;
             _scriptCalls.RoomCalls = 0;
         }
+        
+        SuspendLayout();
 
         if (_trackingPatchesApplied) {
             UpdateStats();
@@ -202,8 +208,6 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
             _version.ApplyRandTrackingPatch();
             _trackingPatchesApplied = true;
         }
-        
-        SuspendLayout();
         
         _roomLabel.Text = $"Room: {currentRoom}";
         _rngValueLabel.Text = $"{_version.RngState:X04}";
@@ -219,57 +223,15 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
             _framerateToggle = true;
         } else {
             _rngFrameCallsLabel.Text = $"{_randCalls.FrameCalls}";
+            _scriptFrameCallsLabel.Text = $"{_scriptCalls.FrameCalls}";
             _framerateToggle = false;
         }
 
         _rngRoomCallsLabel.Text = $"{_randCalls.RoomCalls}";
         _rngTotalCallsLabel.Text = $"{_randCalls.TotalCalls}";
         
-        // re-populate call history table
-        var rowIndex = 0;
-        for (var historyIndex = _callHistory.Count - 1; historyIndex >= 0 && rowIndex < _numCallRows; historyIndex--) {
-            var (frame, calls) = _callHistory[historyIndex];
-            if (calls.Count == 0) {
-                continue;
-            }
-            
-            var labels = _callLabels[rowIndex];
-            labels[0].Text = $"{frame}";
-            for (var i = 1; i < labels.Count || i <= calls.Count; i++) {
-                if (i < labels.Count) {
-                    var label = labels[i];
-                    
-                    if (i <= calls.Count) {
-                        label.Text = $"{calls[i - 1]:X08}";
-                    } else if (label.Text != "") {
-                        label.Text = "";
-                    } else {
-                        break;
-                    }
-                } else {
-                    var label = new Label { AutoSize = true, Font = _font, Text = $"{calls[i - 1]:X08}" };
-                    labels.Add(label);
-
-                    if (i >= _callsTable.ColumnStyles.Count) {
-                        _callsTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
-                    }
-                    
-                    _callsTable.Controls.Add(label, i, rowIndex);
-                }
-            }
-
-            ++rowIndex;
-        }
-
-        // clear any unused labels
-        for (; rowIndex < _numCallRows; rowIndex++) {
-            foreach (var label in _callLabels[rowIndex]) {
-                if (label.Text == "") {
-                    break; // everything past this point will be blank
-                }
-                label.Text = "";
-            }
-        }
+        _scriptRoomCallsLabel.Text = $"{_scriptCalls.RoomCalls}";
+        _scriptTotalCallsLabel.Text = $"{_scriptCalls.TotalCalls}";
         
         ResumeLayout();
     }

@@ -15,7 +15,7 @@ public abstract class GameVersion(IMemoryApi memory) {
     protected abstract uint ScriptRandOffsetIndexAddress { get; }
     protected abstract uint ScriptRandValueAddress { get; }
     protected abstract uint RandOffsetsAddress { get; }
-    protected abstract uint ScriptRandAddress { get; }
+    public abstract uint ScriptRandAddress { get; }
     protected abstract uint RoomNumberAddress { get; }
     protected abstract uint StageNumberAddress { get; }
 

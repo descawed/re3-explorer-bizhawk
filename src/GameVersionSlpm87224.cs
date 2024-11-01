@@ -39,7 +39,7 @@ public class GameVersionSlpm87224(IMemoryApi memory) : GameVersion(memory) {
 
     protected override uint RandOffsetsAddress => 0x09A950;
 
-    protected override uint ScriptRandAddress => 0x052F2C;
+    public override uint ScriptRandAddress => 0x052F30;
 
     protected override uint RoomNumberAddress => 0x0D3218;
 
