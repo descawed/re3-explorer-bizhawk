@@ -60,7 +60,7 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
         
         ClientSize = new Size(480, 320);
         SuspendLayout();
-        BackColor = Color.LightGray;
+        BackColor = Color.FromArgb(0xEC, 0xE9, 0xD8);
 
         var root = new FlowLayoutPanel {
             Dock = DockStyle.Fill,
@@ -115,6 +115,7 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
             Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowOnly,
+            BackColor = Color.WhiteSmoke,
             CellBorderStyle = TableLayoutPanelCellBorderStyle.Single,
         };
         

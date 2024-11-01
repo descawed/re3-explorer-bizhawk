@@ -60,9 +60,6 @@ public abstract class GameVersion(IMemoryApi memory) {
 
         // reset data block
         Memory.WriteByteRange(RandTrackerDataAddress, new byte[RandTrackerDataSize]);
-        if (Memory.ReadU32(RandTrackerDataAddress) != 0) {
-            throw new InvalidDataException("Call tracker data reset was not successful");
-        }
         
         return callers;
     }
