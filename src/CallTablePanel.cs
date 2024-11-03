@@ -13,8 +13,25 @@ public class CallTablePanel(IList<(int, IList<uint>)> callHistory): Panel {
     private const int FrameColumnWidth = 80;
     private const int CallColumnWidth = 100;
 
+    private bool _drawEnabled = true;
+
+    public bool DrawEnabled {
+        get => _drawEnabled;
+        set {
+            if (value && !_drawEnabled) {
+                Invalidate();
+            }
+
+            _drawEnabled = value;
+        }
+    }
+
     protected override void OnPaint(PaintEventArgs e) {
         base.OnPaint(e);
+
+        if (!DrawEnabled) {
+            return;
+        }
 
         var g = e.Graphics;
         var startRow = callHistory.Count - Math.Max(1, -AutoScrollPosition.Y / RowHeight + 1);
@@ -58,7 +75,9 @@ public class CallTablePanel(IList<(int, IList<uint>)> callHistory): Panel {
 
     protected override void OnScroll(ScrollEventArgs se) {
         base.OnScroll(se);
-        Invalidate();
+        if (DrawEnabled) {
+            Invalidate();
+        }
     }
 
     public void Add(int frame, IList<uint> calls) {
@@ -72,6 +91,8 @@ public class CallTablePanel(IList<(int, IList<uint>)> callHistory): Panel {
             scrollSize = AutoScrollMinSize with { Height = scrollHeight };
         }
         AutoScrollMinSize = scrollSize;
-        Invalidate();
+        if (DrawEnabled) {
+            Invalidate();
+        }
     }
 }

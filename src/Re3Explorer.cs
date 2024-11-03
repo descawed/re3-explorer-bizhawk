@@ -60,6 +60,7 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
 
     private readonly TableLayoutPanel _characterTable;
     private readonly List<Label[]> _characterLabels = [];
+    private readonly CheckBox _showCallsCheckBox;
     
     private readonly CallTablePanel _callTablePanel;
 
@@ -165,8 +166,13 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
         
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.Controls.Add(_characterTable);
-        
-        root.Controls.Add(NewLabel("Calls:"), 1, 0);
+
+        _showCallsCheckBox = new CheckBox {
+            AutoSize = true,
+            Font = _font,
+            Text = "Calls",
+        };
+        root.Controls.Add(_showCallsCheckBox, 1, 0);
         root.Controls.Add(_callTablePanel, 1, 1);
         root.SetRowSpan(_callTablePanel, 3);
         
@@ -262,6 +268,8 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
         }
         
         SuspendLayout();
+        
+        _callTablePanel.DrawEnabled = _showCallsCheckBox.Checked;
 
         if (_trackingPatchesApplied) {
             UpdateStats();
