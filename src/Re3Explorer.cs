@@ -172,6 +172,7 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
             Font = _font,
             Text = "Calls",
         };
+        _showCallsCheckBox.CheckedChanged += (_, _) => _callTablePanel.DrawEnabled = _showCallsCheckBox.Checked;
         root.Controls.Add(_showCallsCheckBox, 1, 0);
         root.Controls.Add(_callTablePanel, 1, 1);
         root.SetRowSpan(_callTablePanel, 3);
@@ -268,8 +269,6 @@ public sealed class Re3Explorer: ToolFormBase, IExternalToolForm {
         }
         
         SuspendLayout();
-        
-        _callTablePanel.DrawEnabled = _showCallsCheckBox.Checked;
 
         if (_trackingPatchesApplied) {
             UpdateStats();

@@ -13,7 +13,7 @@ public class CallTablePanel(IList<(int, IList<uint>)> callHistory): Panel {
     private const int FrameColumnWidth = 80;
     private const int CallColumnWidth = 100;
 
-    private bool _drawEnabled = true;
+    private bool _drawEnabled;
 
     public bool DrawEnabled {
         get => _drawEnabled;
